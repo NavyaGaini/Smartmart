@@ -50,12 +50,23 @@ export default function InsightsPage() {
   // =========================
   // 🕒 RECENTLY VIEWED (TIME BASED)
   // =========================
-  const recentItems = history
+  const uniqueRecentMap = new Map();
+
+  history
     .slice()
     .sort((a, b) => b.timestamp - a.timestamp)
-    .map((event) => allItems.find((item) => item.id === event.itemId))
-    .filter(Boolean)
-    .slice(0, 6);
+    .forEach((event) => {
+      // Skip duplicate items
+      if (!uniqueRecentMap.has(event.itemId)) {
+        const matchedItem = allItems.find((item) => item.id === event.itemId);
+
+        if (matchedItem) {
+          uniqueRecentMap.set(event.itemId, matchedItem);
+        }
+      }
+    });
+
+  const recentItems = Array.from(uniqueRecentMap.values()).slice(0, 6);
 
   // =========================
   // 📊 COMBINED ITEMS (SCORE BASED FULL LIST)
