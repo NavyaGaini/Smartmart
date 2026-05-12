@@ -1,28 +1,80 @@
+import { useEffect } from "react";
 import Navbar from "../components/Navbar";
 import Card from "../components/Card";
 import { allItems } from "../data/mockData";
 
 export default function InsightsPage() {
+  // =========================
+  // CLEAR HISTORY ON REFRESH
+  // =========================
+  useEffect(() => {
+    const clearHistory = () => {
+      localStorage.removeItem("smartmart_history");
+    };
+
+    window.addEventListener("beforeunload", clearHistory);
+
+    return () => {
+      window.removeEventListener("beforeunload", clearHistory);
+    };
+  }, []);
+
   const history = JSON.parse(localStorage.getItem("smartmart_history") || "[]");
 
   const now = Date.now();
 
   // =========================
-  // ⭐ EMPTY CHECK (GLOBAL)
+  // EMPTY STATE
   // =========================
   if (!history.length) {
     return (
       <>
         <Navbar />
-        <div style={{ padding: "20px" }}>
-          <h2>No activity yet</h2>
+
+        <div
+          style={{
+            padding: "40px",
+            textAlign: "center",
+            color: "gray",
+            fontSize: "20px",
+            fontWeight: "bold",
+          }}
+        >
+          No activity yet
         </div>
       </>
     );
   }
 
   // =========================
-  // ⭐ SCORE MAP (FREQUENCY + RECENCY)
+  // TIME AGO FUNCTION
+  // =========================
+  function getTimeAgo(timestamp) {
+    const seconds = Math.floor((Date.now() - timestamp) / 1000);
+
+    if (seconds < 60) {
+      return `${seconds}s ago`;
+    }
+
+    const minutes = Math.floor(seconds / 60);
+
+    if (minutes < 60) {
+      return `${minutes}m ago`;
+    }
+
+    const hours = Math.floor(minutes / 60);
+
+    if (hours < 24) {
+      return `${hours}h ago`;
+    }
+
+    const days = Math.floor(hours / 24);
+
+    return `${days}d ago`;
+  }
+
+  // =========================
+  // SCORE MAP (FREQUENCY + RECENCY)
   // =========================
   const scoreMap = {};
 
@@ -39,7 +91,7 @@ export default function InsightsPage() {
   });
 
   // =========================
-  // ⭐ RECOMMENDED ITEMS
+  // RECOMMENDED ITEMS
   // =========================
   const recommendedItems = Object.entries(scoreMap)
     .sort((a, b) => b[1] - a[1])
@@ -48,7 +100,7 @@ export default function InsightsPage() {
     .slice(0, 6);
 
   // =========================
-  // 🕒 RECENTLY VIEWED (TIME BASED)
+  // RECENTLY VIEWED (UNIQUE)
   // =========================
   const uniqueRecentMap = new Map();
 
@@ -56,12 +108,14 @@ export default function InsightsPage() {
     .slice()
     .sort((a, b) => b.timestamp - a.timestamp)
     .forEach((event) => {
-      // Skip duplicate items
       if (!uniqueRecentMap.has(event.itemId)) {
         const matchedItem = allItems.find((item) => item.id === event.itemId);
 
         if (matchedItem) {
-          uniqueRecentMap.set(event.itemId, matchedItem);
+          uniqueRecentMap.set(event.itemId, {
+            item: matchedItem,
+            timestamp: event.timestamp,
+          });
         }
       }
     });
@@ -69,7 +123,7 @@ export default function InsightsPage() {
   const recentItems = Array.from(uniqueRecentMap.values()).slice(0, 6);
 
   // =========================
-  // 📊 COMBINED ITEMS (SCORE BASED FULL LIST)
+  // COMBINED ITEMS
   // =========================
   const combinedItems = Object.entries(scoreMap)
     .sort((a, b) => b[1] - a[1])
@@ -82,7 +136,7 @@ export default function InsightsPage() {
 
       <div style={{ padding: "20px" }}>
         {/* =========================
-            ⭐ RECOMMENDED SECTION
+            RECOMMENDED SECTION
         ========================= */}
         {recommendedItems.length > 0 && (
           <>
@@ -110,7 +164,7 @@ export default function InsightsPage() {
         )}
 
         {/* =========================
-            🕒 RECENTLY VIEWED
+            RECENTLY VIEWED
         ========================= */}
         {recentItems.length > 0 && (
           <>
@@ -124,10 +178,10 @@ export default function InsightsPage() {
                 marginBottom: "40px",
               }}
             >
-              {recentItems.map((item) => (
-                <div key={item.id}>
+              {recentItems.map((recent) => (
+                <div key={recent.item.id}>
                   <Card
-                    item={item}
+                    item={recent.item}
                     showRating={false}
                     showCategory={false}
                     showPrice={false}
@@ -141,7 +195,7 @@ export default function InsightsPage() {
                       marginTop: "6px",
                     }}
                   >
-                    Viewed recently
+                    Viewed {getTimeAgo(recent.timestamp)}
                   </p>
                 </div>
               ))}
@@ -150,12 +204,17 @@ export default function InsightsPage() {
         )}
 
         {/* =========================
-            📊 COMBINED ITEMS SECTION
+            ALL ITEMS SECTION
         ========================= */}
         {combinedItems.length > 0 && (
           <>
-            <h2 style={{ marginTop: "40px", marginBottom: "20px" }}>
-              📊 All Items — Sorted by Usage Score
+            <h2
+              style={{
+                marginTop: "40px",
+                marginBottom: "20px",
+              }}
+            >
+              All Items — Sorted by Usage Score
             </h2>
 
             <div
